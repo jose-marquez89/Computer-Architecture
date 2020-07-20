@@ -58,7 +58,7 @@ class CPU:
         from run() if you need help debugging.
         """
 
-        print(f"TRACE: %02X | %02X %02X %02X |" % (
+        print("TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
             # self.fl,
             # self.ie,
