@@ -2,10 +2,10 @@
 
 """Main."""
 
-import sys
-from cpu import *
+# import sys
+import cpu
 
-cpu = CPU()
+cpu = cpu.CPU()
 
 cpu.load()
 cpu.run()
