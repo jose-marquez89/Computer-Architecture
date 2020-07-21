@@ -24,13 +24,12 @@ class CPU:
 
     def load(self):
         """Load a program into memory."""
+        prog_path = sys.argv[1]
 
+        """
         address = 0
 
-        # For now, we've just hardcoded a program:
-
         program = [
-            # From print8.ls8
             0b10000010,  # LDI R0,8
             0b00000000,
             0b00001000,
@@ -42,6 +41,11 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+        """
+        with open(prog_path, 'r') as f:
+            prog = f.readlines()
+            for address, line in enumerate(prog):
+                self.ram[address] = int(line[:8], 2)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
