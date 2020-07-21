@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
-"""Main."""
-
-# import sys
+#! /usr/bin/env python3
 import cpu
 
 cpu = cpu.CPU()
 
-cpu.load()
-cpu.run()
+
+if __name__ == "__main__":
+    cpu.load()
+    cpu.run()
