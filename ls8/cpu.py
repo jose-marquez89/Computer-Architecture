@@ -7,14 +7,15 @@ class CPU:
     """Main CPU class."""
 
     def __init__(self):
-        """Construct a new CPU."""
+        """Boot the CPU."""
         self.ram = [0] * 256
         self.registers = [0] * 8
         self.pc = 0
         self.ir = 0
         self.fl = 0
-        self.interpreter = {"HLT": 0b00000001, "LDI": 0b10000010,
-                            "PRN": 0b01000111}
+        self.alu_ops = None
+
+        self.registers[7] = 0xF4
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -26,33 +27,45 @@ class CPU:
         """Load a program into memory."""
         prog_path = sys.argv[1]
 
-        """
-        address = 0
-
-        program = [
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
-        """
         with open(prog_path, 'r') as f:
             prog = f.readlines()
             for address, line in enumerate(prog):
-                self.ram[address] = int(line[:8], 2)
+                self.ram_write(address, int(line[:8], 2))
+
+    def hlt(self):
+        return False
+
+    def prn(self, op):
+        operand = self.pc + 1
+        print(self.registers[self.ram_read(operand)])
+        return True
+
+    def ldi(self):
+        operand_a = self.pc + 1
+        operand_b = self.pc + 2
+        self.registers[self.ram_read(operand_a)] = self.ram_read(operand_b)
+        return True
+
+    def mul(self):
+        operand_a = self.pc + 1
+        operand_b = self.pc + 2
+        rp_a = self.ram_read(operand_a)
+        rp_b = self.ram_read(operand_b)
+        self.registers[rp_a] *= self.registers[rp_b]
+        return True
+
+    def build_alu_ops(self):
+        self.alu_ops = {0b10100010: self.mul}
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
+        # TODO: implement a branch tree
+
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB": etc
+            self.registers[reg_a] += self.registers[reg_b]
+        elif op == "MUL":
+            self.registers[reg_a] *= self.registers[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -79,25 +92,13 @@ class CPU:
     def run(self):
         """Run the CPU."""
         self.load()
+        self.interpreter = {0b00000001: self.halt,
+                            0b10000010: self.ldi}
 
         running = True
 
         while running:
-            self.ir = self.ram_read(self.pc)
-            operand_a = self.pc + 1
-            operand_b = self.pc + 2
-
-            if self.ir == self.interpreter["HLT"]:
-                running = False
-                self.pc += 1
-                break
-            elif self.ir == self.interpreter["PRN"]:
-                print(self.registers[self.ram_read(operand_a)])
-                self.pc += 2
-            elif self.ir == self.interpreter["LDI"]:
-                self.registers[self.ram[operand_a]] = self.ram[operand_b]
-                self.pc += 3
-            else:
-                running = self.alu(self.ir, operand_a, operand_b)
+            running = self.interpreter[self.ram[self.pc]]()
+            self.pc += ((self.ram[self.pc] >> 6) + 1)
 
         sys.exit()
