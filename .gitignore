@@ -108,3 +108,6 @@ archenv/
 
 # notes from class
 notes/
+
+# compiled code
+*_test
