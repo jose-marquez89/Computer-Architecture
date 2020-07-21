@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct ram {
+struct random_access {
 	int memory[256];
 	int mar;
 	int mdr;
@@ -9,22 +9,18 @@ struct ram {
 
 int main()
 {
-	int registers[8];
-	int rc;
+	struct random_access *ram;
+	int prog[] = {0b00001000, 0b01001000,
+	              0b00001010, 0b10000000};
+	int i, j;
+	ram = malloc(sizeof(struct random_access));
 
-
-
-	for (rc=0; rc<8; rc++) {
-		registers[rc] = 0;
+	for (i=0; i<16; i++) {
+		printf("%i\n", ram->memory[i]);
+	}
+	for (j=0; j<5; j++) {
+		printf("%i\n", prog[i]);
 	}
 
-	for (rc=0; rc<8; rc++) {
-		registers[rc] = rc * 2;
-	}
-
-	for (rc=0; rc<8; rc++) {
-		printf("%i ", registers[rc]);
-	}
-	putchar('\n');
 	return 0;
 }
