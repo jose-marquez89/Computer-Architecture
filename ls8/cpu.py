@@ -1,6 +1,11 @@
 """CPU functionality."""
 
 import sys
+import logging
+
+FORMAT = "%(asctime)s - %(message)s"
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+logging.disable(logging.DEBUG)
 
 
 class CPU:
@@ -13,7 +18,6 @@ class CPU:
         self.pc = 0
         self.ir = 0
         self.fl = 0
-        self.alu_ops = None
 
         self.registers[7] = 0xF4
 
@@ -35,7 +39,7 @@ class CPU:
     def hlt(self):
         return False
 
-    def prn(self, op):
+    def prn(self):
         operand = self.pc + 1
         print(self.registers[self.ram_read(operand)])
         return True
@@ -54,18 +58,23 @@ class CPU:
         self.registers[rp_a] *= self.registers[rp_b]
         return True
 
+    def build_interpreter(self):
+        self.interpreter = {0b00000001: self.hlt,
+                            0b10000010: self.ldi,
+                            0b01000111: self.prn}
+        logging.debug(f"(codes, functions) -> {self.interpreter.items()}")
+        return
+
     def build_alu_ops(self):
         self.alu_ops = {0b10100010: self.mul}
+        logging.debug(f"(ALU codes, functions) -> {self.alu_ops.items()}")
+        return
 
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, branch_table):
         """ALU operations."""
 
-        # TODO: implement a branch tree
-
-        if op == "ADD":
-            self.registers[reg_a] += self.registers[reg_b]
-        elif op == "MUL":
-            self.registers[reg_a] *= self.registers[reg_b]
+        if op in branch_table:
+            return branch_table[op]()
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -92,13 +101,21 @@ class CPU:
     def run(self):
         """Run the CPU."""
         self.load()
-        self.interpreter = {0b00000001: self.halt,
-                            0b10000010: self.ldi}
+        self.build_interpreter()
+        self.build_alu_ops()
 
         running = True
 
         while running:
-            running = self.interpreter[self.ram[self.pc]]()
-            self.pc += ((self.ram[self.pc] >> 6) + 1)
+            op = self.ram_read(self.pc)
+            logging.debug(f"Operation Code: {op}")
+            switch = (op & 0b00100000) >> 5
+            # Handle with ALU is switch == 1
+            if switch:
+                self.alu(op, self.alu_ops)
+            else:
+                running = self.interpreter[self.ram_read(self.pc)]()
+            # Increment PC
+            self.pc += ((op >> 6) + 1)
 
         sys.exit()
