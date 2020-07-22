@@ -5,7 +5,7 @@ import logging
 
 FORMAT = "%(asctime)s - %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
-# logging.disable(logging.DEBUG)
+logging.disable(logging.DEBUG)
 
 
 class CPU:
