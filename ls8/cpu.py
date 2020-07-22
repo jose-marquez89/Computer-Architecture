@@ -5,7 +5,7 @@ import logging
 
 FORMAT = "%(asctime)s - %(message)s"
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
-logging.disable(logging.DEBUG)
+# logging.disable(logging.DEBUG)
 
 
 class CPU:
@@ -31,11 +31,18 @@ class CPU:
     def load(self):
         """Load a program into memory."""
         prog_path = sys.argv[1]
+        valid_for_address = 0
 
         with open(prog_path, 'r') as f:
             prog = f.readlines()
-            for address, line in enumerate(prog):
-                self.ram_write(address, int(line[:8], 2))
+            logging.debug(f"File Split: {prog}")
+            for line in prog:
+                if line.startswith("#"):
+                    continue
+                self.ram_write(valid_for_address, int(line[:8], 2))
+                valid_for_address += 1
+
+        logging.debug(f"RAM: {self.ram}")
 
     def hlt(self):
         return False
@@ -59,34 +66,72 @@ class CPU:
         self.registers[rp_a] *= self.registers[rp_b]
         return True
 
-    def push(self):
+    def add(self):
+        operand_a = self.pc + 1
+        operand_b = self.pc + 2
+        rp_a = self.ram_read(operand_a)
+        rp_b = self.ram_read(operand_b)
+        self.registers[rp_a] += self.registers[rp_b]
+        return True
+
+    def push(self, from_call=False):
+        """Push the content of the specified register on to the stack"""
         self.sp -= 1
+
+        # Get the instruction directly after call, if subroutine
+        if from_call:
+            self.ram_write(self.sp, self.pc + 2)
+            return True
+
         logging.debug(f"Pushing to stack at address {hex(self.sp)}")
         copy_reg = self.ram_read(self.pc + 1)
         logging.debug(f"copy_reg (PUSH): {copy_reg}")
+
         self.ram_write(self.sp, self.registers[copy_reg])
         return True
 
-    def pop(self):
+    def pop(self, from_ret=False):
         logging.debug(f"Popping from stack at address {hex(self.sp)}")
         if self.sp == 0xF4:
             print("Program attempted to pop from an empty stack. Aborting.")
             return False
+
+        # if returning from subroutine, set pc
+        if from_ret:
+            self.pc = self.ram_read(self.sp)
+            self.sp += 1
+            return True
+
         copy_reg = self.ram_read(self.pc + 1)
+
         self.registers[copy_reg] = self.ram_read(self.sp)
         self.sp += 1
         return True
+
+    def call(self):
+        """Call subroutine and change pc"""
+        self.push(from_call=True)
+        self.pc = self.registers[self.ram_read(self.pc + 1)]
+        return -1
+
+    def ret(self):
+        """Return from subroutine and change pc"""
+        self.pop(from_ret=True)
+        return -1
 
     def build_interpreter(self):
         self.interpreter = {0b00000001: self.hlt,
                             0b10000010: self.ldi,
                             0b01000111: self.prn,
                             0b01000110: self.pop,
-                            0b01000101: self.push}
+                            0b01000101: self.push,
+                            0b01010000: self.call,
+                            0b00010001: self.ret}
         return
 
     def build_alu_ops(self):
-        self.alu_ops = {0b10100010: self.mul}
+        self.alu_ops = {0b10100010: self.mul,
+                        0b10100000: self.add}
         return
 
     def alu(self, op, branch_table):
@@ -126,6 +171,8 @@ class CPU:
 
         running = True
 
+        logging.debug(f"Start pc: {self.pc}")
+
         while running:
             op = self.ram_read(self.pc)
             switch = (op & 0b00100000) >> 5
@@ -135,7 +182,14 @@ class CPU:
             else:
                 running = self.interpreter[self.ram_read(self.pc)]()
                 logging.debug(f"Operation Code: {op} - {self.interpreter[op]}")
-            # Increment PC
-            self.pc += ((op >> 6) + 1)
+
+            # when executing CALL and RET, do not
+            if running == -1:
+                running = True
+            else:
+                # Increment PC
+                self.pc += ((op >> 6) + 1)
+
+            logging.debug(f"pc: {self.pc}")
 
         sys.exit()
