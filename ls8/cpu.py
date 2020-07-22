@@ -61,15 +61,18 @@ class CPU:
 
     def push(self):
         self.sp -= 1
-        copy_reg = self.pc + 1
+        logging.debug(f"Pushing to stack at address {hex(self.sp)}")
+        copy_reg = self.ram_read(self.pc + 1)
+        logging.debug(f"copy_reg (PUSH): {copy_reg}")
         self.ram_write(self.sp, self.registers[copy_reg])
         return True
 
     def pop(self):
+        logging.debug(f"Popping from stack at address {hex(self.sp)}")
         if self.sp == 0xF4:
             print("Program attempted to pop from an empty stack. Aborting.")
             return False
-        copy_reg = self.pc + 1
+        copy_reg = self.ram_read(self.pc + 1)
         self.registers[copy_reg] = self.ram_read(self.sp)
         self.sp += 1
         return True
@@ -78,18 +81,17 @@ class CPU:
         self.interpreter = {0b00000001: self.hlt,
                             0b10000010: self.ldi,
                             0b01000111: self.prn,
-                            0b10000110: self.pop,
+                            0b01000110: self.pop,
                             0b01000101: self.push}
-        logging.debug(f"(codes, functions) -> {self.interpreter.items()}")
         return
 
     def build_alu_ops(self):
         self.alu_ops = {0b10100010: self.mul}
-        logging.debug(f"(ALU codes, functions) -> {self.alu_ops.items()}")
         return
 
     def alu(self, op, branch_table):
         """ALU operations."""
+        logging.debug(f"Operation Code: {op} - {self.alu_ops[op]}")
 
         if op in branch_table:
             return branch_table[op]()
@@ -126,13 +128,13 @@ class CPU:
 
         while running:
             op = self.ram_read(self.pc)
-            logging.debug(f"Operation Code: {op}")
             switch = (op & 0b00100000) >> 5
             # Handle with ALU is switch == 1
             if switch:
                 self.alu(op, self.alu_ops)
             else:
                 running = self.interpreter[self.ram_read(self.pc)]()
+                logging.debug(f"Operation Code: {op} - {self.interpreter[op]}")
             # Increment PC
             self.pc += ((op >> 6) + 1)
 
