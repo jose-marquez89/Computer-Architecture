@@ -20,6 +20,7 @@ class CPU:
         self.fl = 0
 
         self.registers[7] = 0xF4
+        self.sp = self.registers[7]
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -57,6 +58,21 @@ class CPU:
         rp_b = self.ram_read(operand_b)
         self.registers[rp_a] *= self.registers[rp_b]
         return True
+
+    def push(self):
+        self.sp -= 1
+        copy_reg = self.pc + 1
+        self.ram_write(self.sp, self.registers[copy_reg])
+        return True
+
+    def pop(self):
+        if self.sp == 0xF4:
+            print("Program attempted to pop from an empty stack. Aborting.")
+            return False
+        copy_reg = self.pc + 1
+        self.registers[copy_reg] = self.ram_read(self.sp)
+        self.sp += 1
+        return False
 
     def build_interpreter(self):
         self.interpreter = {0b00000001: self.hlt,
