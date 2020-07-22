@@ -72,12 +72,14 @@ class CPU:
         copy_reg = self.pc + 1
         self.registers[copy_reg] = self.ram_read(self.sp)
         self.sp += 1
-        return False
+        return True
 
     def build_interpreter(self):
         self.interpreter = {0b00000001: self.hlt,
                             0b10000010: self.ldi,
-                            0b01000111: self.prn}
+                            0b01000111: self.prn,
+                            0b10000110: self.pop,
+                            0b01000101: self.push}
         logging.debug(f"(codes, functions) -> {self.interpreter.items()}")
         return
 
