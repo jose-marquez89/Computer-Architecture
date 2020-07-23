@@ -62,12 +62,10 @@ class CPU:
         """Store value in registerB to addresss stored in registerA"""
         reg_a = self.pc + 1
         reg_b = self.pc + 2
-        reg_a_add = self.ram_read(reg_a)
-        reg_b_val = self.ram_read(reg_b)
+        reg_a_add = self.registers[self.ram_read(reg_a)]
+        reg_b_val = self.registers[self.ram_read(reg_b)]
         self.ram_write(reg_a_add, reg_b_val)
         return True
-
-
 
     def mul(self):
         operand_a = self.pc + 1
