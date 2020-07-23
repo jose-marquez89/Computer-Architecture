@@ -1,5 +1,6 @@
 """CPU functionality."""
 
+import time
 import sys
 import logging
 
@@ -20,6 +21,8 @@ class CPU:
         self.fl = 0
 
         self.registers[7] = 0xF4
+        self._is = self.registers[6]
+        self._im = self.registers[5]
         self.sp = self.registers[7]
 
     def ram_read(self, mar):
@@ -43,6 +46,10 @@ class CPU:
                 valid_for_address += 1
 
         logging.debug(f"RAM: {self.ram}")
+
+    def set_kth_bit(k, number):
+        new = (1 << k) | number)
+        return new
 
     def hlt(self):
         return False
@@ -83,13 +90,23 @@ class CPU:
         self.registers[rp_a] += self.registers[rp_b]
         return True
 
-    def push(self, from_call=False):
+    def push(self, from_call=False, from_interrupt=False):
         """Push the content of the specified register on to the stack"""
         self.sp -= 1
 
         # Get the instruction directly after call, if subroutine
         if from_call:
             self.ram_write(self.sp, self.pc + 2)
+            return True
+        elif from_interrupt:
+            # push pc and fl to stack
+            self.ram_write(self.sp, self.pc)
+            self.sp -= 1
+            self.ram_write(self.sp, self.fl)
+            for i in range(0, 7):
+                self.sp -= 1
+                self.ram_write(self.sp, self.registers[i]
+
             return True
 
         logging.debug(f"Pushing to stack at address {hex(self.sp)}")
@@ -179,10 +196,37 @@ class CPU:
         self.build_alu_ops()
 
         running = True
+        allow_interrupts = True
 
         logging.debug(f"Start pc: {self.pc}")
 
+        now = time.time()
         while running:
+            # check the timer to see if 1 second has passed
+            elapsed = time.time() - now
+
+            # if interrupts are enabled, set zero-th bit for timer
+            if allow_interrupts and elapsed >= 1.0:
+                self._is = self.set_kth_bit(0, self._is)
+
+            if allow_interrupts:
+                # check for interupts
+                masked_interrupts = self._im & self._is
+
+                for i in range(8):
+                    interrupt = ((masked_interrupts >> i) & 1)  == 1
+                    if interrupt:
+                        allow_interrupts = False
+                        # unset bit
+                        self._is = self._is ^ (1 << i)
+                        # push items onto stack (push automatically)
+                        self.push(from_interrupt=True)
+
+                        # TODO: look up vector for interrupt handler
+                        # TODO: set PC to handler address
+                        # TODO: finish IRET function
+
+
             op = self.ram_read(self.pc)
             switch = (op & 0b00100000) >> 5
             # Handle with ALU is switch == 1
