@@ -111,3 +111,6 @@ notes/
 
 # compiled code
 *_test
+
+# swap file
+*.swp
