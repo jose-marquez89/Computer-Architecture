@@ -57,7 +57,7 @@ class CPU:
 
         logging.debug(f"RAM: {self.ram}")
 
-    def set_kth_bit(k, number):
+    def set_kth_bit(self, k, number):
         new = ((1 << k) | number)
         return new
 
@@ -74,6 +74,11 @@ class CPU:
         operand_b = self.pc + 2
         self.registers[self.ram_read(operand_a)] = self.ram_read(operand_b)
         return True
+
+    def jmp(self):
+        reg = self.pc + 1
+        self.pc = self.registers[self.ram_read(reg)]
+        return -1
 
     def st(self):
         """Store value in registerB to addresss stored in registerA"""
@@ -178,7 +183,10 @@ class CPU:
                             0b01000110: self.pop,
                             0b01000101: self.push,
                             0b01010000: self.call,
-                            0b00010001: self.ret}
+                            0b00010001: self.ret,
+                            0b00010011: self.iret,
+                            0b01010100: self.jmp,
+                            0b10000100: self.st}
         return
 
     def build_alu_ops(self):
