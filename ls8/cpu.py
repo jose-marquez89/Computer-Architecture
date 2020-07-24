@@ -48,7 +48,7 @@ class CPU:
         logging.debug(f"RAM: {self.ram}")
 
     def set_kth_bit(k, number):
-        new = (1 << k) | number)
+        new = ((1 << k) | number)
         return new
 
     def hlt(self):
