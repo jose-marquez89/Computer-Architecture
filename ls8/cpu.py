@@ -1,4 +1,5 @@
 """CPU functionality."""
+
 import time
 import sys
 import logging
@@ -32,6 +33,7 @@ class CPU:
                           5: 0xFD,
                           6: 0xFE,
                           7: 0xFF}
+        self.allow_interrupts = True
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -113,7 +115,7 @@ class CPU:
             self.ram_write(self.sp, self.fl)
             for i in range(0, 7):
                 self.sp -= 1
-                self.ram_write(self.sp, self.registers[i]
+                self.ram_write(self.sp, self.registers[i])
 
             return True
 
@@ -151,6 +153,22 @@ class CPU:
     def ret(self):
         """Return from subroutine and change pc"""
         self.pop(from_ret=True)
+        return -1
+
+    def iret(self):
+        # pop registers 6-0 from stack
+        for i in range(6, -1, -1):
+            self.registers[i] = self.ram_read(self.sp)
+            self.sp += 1
+        # pop flags
+        self.fl = self.ram_read(self.sp)
+        self.sp += 1
+        # pop program counter
+        self.pc = self.ram_read(self.sp)
+        self.sp += 1
+        # re-enable interrupts
+        self.allow_interrupts = True
+
         return -1
 
     def build_interpreter(self):
@@ -204,7 +222,6 @@ class CPU:
         self.build_alu_ops()
 
         running = True
-        allow_interrupts = True
 
         logging.debug(f"Start pc: {self.pc}")
 
@@ -214,24 +231,25 @@ class CPU:
             elapsed = time.time() - now
 
             # if interrupts are enabled, set zero-th bit for timer
-            if allow_interrupts and elapsed >= 1.0:
+            if self.allow_interrupts and elapsed >= 1.0:
                 self._is = self.set_kth_bit(0, self._is)
 
-            if allow_interrupts:
+            if self.allow_interrupts:
                 # check for interupts
                 masked_interrupts = self._im & self._is
 
                 for i in range(8):
-                    interrupt = ((masked_interrupts >> i) & 1)  == 1
+                    interrupt = ((masked_interrupts >> i) & 1) == 1
                     if interrupt:
-                        allow_interrupts = False
+                        self.allow_interrupts = False
+
                         # unset bit
                         self._is = self._is ^ (1 << i)
+
                         # push items onto stack (push automatically)
                         self.push(from_interrupt=True)
 
                         self.pc = self.ram_read(self.i_vectors[i])
-                        # TODO: finish IRET function
 
             op = self.ram_read(self.pc)
             switch = (op & 0b00100000) >> 5
