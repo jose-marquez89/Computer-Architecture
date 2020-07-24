@@ -1,5 +1,4 @@
 """CPU functionality."""
-
 import time
 import sys
 import logging
@@ -24,6 +23,15 @@ class CPU:
         self._is = self.registers[6]
         self._im = self.registers[5]
         self.sp = self.registers[7]
+
+        self.i_vectors = {0: 0xF8,
+                          1: 0xF9,
+                          2: 0xFA,
+                          3: 0xFB,
+                          4: 0xFC,
+                          5: 0xFD,
+                          6: 0xFE,
+                          7: 0xFF}
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -222,10 +230,8 @@ class CPU:
                         # push items onto stack (push automatically)
                         self.push(from_interrupt=True)
 
-                        # TODO: look up vector for interrupt handler
-                        # TODO: set PC to handler address
+                        self.pc = self.ram_read(self.i_vectors[i])
                         # TODO: finish IRET function
-
 
             op = self.ram_read(self.pc)
             switch = (op & 0b00100000) >> 5
